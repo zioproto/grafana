@@ -247,6 +247,7 @@ type PanelDTO struct {
 	BaseURL       string `json:"baseUrl"`
 	Signature     string `json:"signature"`
 	Module        string `json:"module"`
+	ModuleLoader  string `json:"moduleLoader"`
 }
 
 const (
@@ -263,6 +264,7 @@ type Error struct {
 }
 
 type PreloadPlugin struct {
-	Path    string `json:"path"`
-	Version string `json:"version"`
+	Path         string `json:"path"`
+	Version      string `json:"version"`
+	ModuleLoader string `json:"string,omitempty"`
 }
