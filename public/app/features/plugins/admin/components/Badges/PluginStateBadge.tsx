@@ -8,9 +8,9 @@ type Props = { plugin: CatalogPlugin };
 
 export function PluginStateBadge({ plugin }: Props): React.ReactElement | null {
   if (plugin.isAlpha) {
-    return <Badge text="Alpha" color="violet" />;
+    return <Badge text="Alpha" color="orange" />;
   } else if (plugin.isBeta) {
-    return <Badge text="Beta" color="orange" />;
+    return <Badge text="Beta" color="violet" />;
   } else {
     return null;
   }
