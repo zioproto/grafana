@@ -11,7 +11,7 @@ import { Icon } from '../Icon/Icon';
 import { HorizontalGroup } from '../Layout/Layout';
 import { Tooltip } from '../Tooltip/Tooltip';
 
-export type BadgeColor = 'blue' | 'red' | 'green' | 'orange' | 'purple';
+export type BadgeColor = 'blue' | 'red' | 'green' | 'orange' | 'purple' | 'violet';
 
 export interface BadgeProps extends HTMLAttributes<HTMLDivElement> {
   text: React.ReactNode;

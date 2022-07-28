@@ -47,6 +47,8 @@ export interface CatalogPlugin {
   isDisabled: boolean;
   // `isPublished` is TRUE if the plugin is published to grafana.com
   isPublished: boolean;
+  isBeta: boolean;
+  isAlpha: boolean;
   name: string;
   orgName: string;
   signature: PluginSignatureStatus;

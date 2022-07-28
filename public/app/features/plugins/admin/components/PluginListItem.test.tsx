@@ -56,6 +56,8 @@ describe('PluginListItem', () => {
     isEnterprise: false,
     isDisabled: false,
     isPublished: true,
+    isAlpha: false,
+    isBeta: false,
   };
 
   /** As Grid */

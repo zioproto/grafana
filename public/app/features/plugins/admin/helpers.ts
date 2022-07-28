@@ -83,6 +83,8 @@ export function mapRemoteToCatalog(plugin: RemotePlugin, error?: PluginError): C
     isInstalled: isDisabled,
     isDisabled: isDisabled,
     isCore: plugin.internal,
+    isBeta: false,
+    isAlpha: false,
     isDev: false,
     isEnterprise: status === 'enterprise',
     type: typeCode,
@@ -101,6 +103,7 @@ export function mapLocalToCatalog(plugin: LocalPlugin, error?: PluginError): Cat
     signatureOrg,
     signatureType,
     hasUpdate,
+    state,
   } = plugin;
 
   const isDisabled = !!error || isDisabledSecretsPlugin(type);
@@ -125,6 +128,8 @@ export function mapLocalToCatalog(plugin: LocalPlugin, error?: PluginError): Cat
     isPublished: false,
     isDev: Boolean(dev),
     isEnterprise: false,
+    isBeta: state === 'beta',
+    isAlpha: state === 'alpha',
     type,
     error: error?.errorCode,
   };
@@ -165,6 +170,8 @@ export function mapToCatalogPlugin(local?: LocalPlugin, remote?: RemotePlugin, e
     isInstalled: Boolean(local) || isDisabled,
     isDisabled: isDisabled,
     isPublished: true,
+    isBeta: local?.state === 'beta',
+    isAlpha: local?.state === 'alpha',
     // TODO<check if we would like to keep preferring the remote version>
     name: remote?.name || local?.name || '',
     // TODO<check if we would like to keep preferring the remote version>

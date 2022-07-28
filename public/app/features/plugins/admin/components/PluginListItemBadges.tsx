@@ -4,7 +4,13 @@ import { HorizontalGroup, PluginSignatureBadge } from '@grafana/ui';
 
 import { CatalogPlugin } from '../types';
 
-import { PluginEnterpriseBadge, PluginDisabledBadge, PluginInstalledBadge, PluginUpdateAvailableBadge } from './Badges';
+import {
+  PluginEnterpriseBadge,
+  PluginDisabledBadge,
+  PluginInstalledBadge,
+  PluginUpdateAvailableBadge,
+  PluginStateBadge,
+} from './Badges';
 
 type PluginBadgeType = {
   plugin: CatalogPlugin;
@@ -16,6 +22,7 @@ export function PluginListItemBadges({ plugin }: PluginBadgeType) {
       <HorizontalGroup height="auto" wrap>
         <PluginEnterpriseBadge plugin={plugin} />
         {plugin.isDisabled && <PluginDisabledBadge error={plugin.error} />}
+        {(plugin.isBeta || plugin.isAlpha) && <PluginStateBadge plugin={plugin} />}
         <PluginUpdateAvailableBadge plugin={plugin} />
       </HorizontalGroup>
     );
@@ -26,6 +33,7 @@ export function PluginListItemBadges({ plugin }: PluginBadgeType) {
       <PluginSignatureBadge status={plugin.signature} />
       {plugin.isDisabled && <PluginDisabledBadge error={plugin.error} />}
       {plugin.isInstalled && <PluginInstalledBadge />}
+      {(plugin.isBeta || plugin.isAlpha) && <PluginStateBadge plugin={plugin} />}
       <PluginUpdateAvailableBadge plugin={plugin} />
     </HorizontalGroup>
   );

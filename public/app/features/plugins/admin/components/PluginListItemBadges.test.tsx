@@ -32,6 +32,8 @@ describe('PluginListItemBadges', () => {
     isEnterprise: false,
     isDisabled: false,
     isPublished: true,
+    isBeta: false,
+    isAlpha: false,
   };
 
   afterEach(() => {
