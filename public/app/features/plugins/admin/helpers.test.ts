@@ -186,6 +186,13 @@ describe('Plugins/Helpers', () => {
       expect(mapLocalToCatalog(pluginWithoutDev).isDev).toBe(false);
       expect(mapLocalToCatalog(pluginWithDev).isDev).toBe(true);
     });
+
+    test('isBeta if local.state === beta', () => {
+      const pluginWithBeta = { ...localPlugin, state: 'beta' };
+      const pluginWithoutBeta = { ...localPlugin };
+      expect(mapLocalToCatalog(pluginWithBeta).isBeta).toBe(true);
+      expect(mapLocalToCatalog(pluginWithoutBeta).isBeta).toBe(false);
+    });
   });
 
   describe('mapToCatalogPlugin()', () => {
@@ -451,6 +458,17 @@ describe('Plugins/Helpers', () => {
         )
       ).toMatchObject({
         signature: PluginSignatureStatus.missing,
+      });
+
+      test('`.isBeta` - pulls from local', () => {
+        // Local & Remote
+        expect(mapToCatalogPlugin({ ...localPlugin, state: 'beta' }, remotePlugin)).toMatchObject({
+          isBeta: true,
+        });
+
+        expect(mapToCatalogPlugin({ ...localPlugin }, remotePlugin)).toMatchObject({
+          isBeta: false,
+        });
       });
 
       // Remote only

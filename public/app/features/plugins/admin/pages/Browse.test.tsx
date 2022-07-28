@@ -63,6 +63,15 @@ describe('Browse list of plugins', () => {
       expect(queryByText('Plugin 4')).toBeNull();
     });
 
+    it('should display a beta badge when a plugin is in beta', async () => {
+      const { queryByText } = renderBrowse('/plugins', [
+        getCatalogPluginMock({ id: 'plugin-1', name: 'Plugin 1', isInstalled: true, isBeta: true }),
+      ]);
+
+      await waitFor(() => expect(queryByText('Plugin 1')).toBeInTheDocument());
+      expect(queryByText('Beta')).toBeInTheDocument();
+    });
+
     it('should list all plugins (except core plugins) when filtering by all', async () => {
       const { queryByText } = renderBrowse('/plugins?filterBy=all&filterByType=all', [
         getCatalogPluginMock({ id: 'plugin-1', name: 'Plugin 1', isInstalled: true }),
