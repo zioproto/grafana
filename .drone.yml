@@ -3432,6 +3432,7 @@ steps:
       from_secret: gcp_key
     PRERELEASE_BUCKET:
       from_secret: prerelease_bucket
+  failure: ignore
   image: grafana/grafana-ci-deploy:1.3.3
   name: retrieve-npm-packages
 - commands:
@@ -3441,6 +3442,7 @@ steps:
   environment:
     NPM_TOKEN:
       from_secret: npm_token
+  failure: ignore
   image: grafana/build-container:1.5.9
   name: release-npm-packages
 trigger:
@@ -5016,6 +5018,6 @@ kind: secret
 name: gcp_upload_artifacts_key
 ---
 kind: signature
-hmac: 968320e69b8531451dec23ac2d586296616533986c9e9a767410975109220072
+hmac: 6179c658457991ebf224f3679f00e719c3d927a931ff5392c806088c03e6e129
 
 ...
