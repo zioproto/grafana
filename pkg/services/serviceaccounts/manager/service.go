@@ -12,6 +12,7 @@ import (
 	"github.com/grafana/grafana/pkg/services/serviceaccounts"
 	"github.com/grafana/grafana/pkg/services/serviceaccounts/api"
 	"github.com/grafana/grafana/pkg/services/serviceaccounts/database"
+	"github.com/grafana/grafana/pkg/services/serviceaccounts/toucan"
 	"github.com/grafana/grafana/pkg/setting"
 )
 
@@ -21,10 +22,13 @@ const (
 )
 
 type ServiceAccountsService struct {
-	store           serviceaccounts.Store
-	log             log.Logger
-	backgroundLog   log.Logger
-	checkTokenLeaks bool
+	store         serviceaccounts.Store
+	log           log.Logger
+	backgroundLog log.Logger
+	toucanService toucan.Checker
+
+	checkTokenLeaks    bool
+	checkTokenInterval time.Duration
 }
 
 func ProvideServiceAccountsService(
@@ -51,7 +55,21 @@ func ProvideServiceAccountsService(
 	serviceaccountsAPI := api.NewServiceAccountsAPI(cfg, s, ac, routeRegister, s.store, permissionService)
 	serviceaccountsAPI.RegisterAPIEndpoints()
 
-	s.checkTokenLeaks = cfg.SectionWithEnvOverrides("security").Key("check_token_leaks").MustBool(false)
+	s.checkTokenLeaks = cfg.SectionWithEnvOverrides("toucan").Key("enabled").MustBool(false)
+	if s.checkTokenLeaks {
+		s.checkTokenInterval = cfg.SectionWithEnvOverrides("toucan").
+			Key("interval").MustDuration(defaultTokenCollectionInterval)
+
+		// Enforce a minimum interval of 1 minute.
+		if s.checkTokenInterval < time.Minute {
+			s.backgroundLog.Warn("token leak check interval is too low, increasing to " +
+				defaultTokenCollectionInterval.String())
+
+			s.checkTokenInterval = defaultTokenCollectionInterval
+		}
+
+		s.toucanService = toucan.NewService(s.store)
+	}
 
 	return s, nil
 }
@@ -94,6 +112,10 @@ func (sa *ServiceAccountsService) Run(ctx context.Context) error {
 			}
 		case <-tokenCheckTicker.C:
 			sa.backgroundLog.Debug("checking for leaked tokens")
+
+			if err := sa.toucanService.CheckTokens(ctx); err != nil {
+				sa.backgroundLog.Warn("Failed to check for leaked tokens", "error", err.Error())
+			}
 		}
 	}
 }
