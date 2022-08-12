@@ -8,3 +8,11 @@ type client struct{}
 func newClient() *client {
 	return &client{}
 }
+
+// checkTokens checks if any leaked tokens exist.
+// Returns list of leaked tokens.
+func (c *client) checkTokens(tokens []string) ([]string, error) {
+	leakedTokens := []string{}
+
+	return leakedTokens, nil
+}

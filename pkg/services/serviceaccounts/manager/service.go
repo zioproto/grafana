@@ -68,7 +68,7 @@ func ProvideServiceAccountsService(
 			s.checkTokenInterval = defaultTokenCollectionInterval
 		}
 
-		s.toucanService = toucan.NewService(s.store)
+		s.toucanService = toucan.NewService(&toucan.MockTokenRetriever{})
 	}
 
 	return s, nil
