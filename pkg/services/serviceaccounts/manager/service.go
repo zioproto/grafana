@@ -2,6 +2,8 @@ package manager
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	"github.com/grafana/grafana/pkg/api/routing"
 	"github.com/grafana/grafana/pkg/infra/log"
@@ -12,6 +14,8 @@ import (
 	"github.com/grafana/grafana/pkg/services/serviceaccounts/database"
 	"github.com/grafana/grafana/pkg/setting"
 )
+
+const metricsCollectionInterval = time.Minute * 30
 
 type ServiceAccountsService struct {
 	store serviceaccounts.Store
@@ -45,8 +49,29 @@ func ProvideServiceAccountsService(
 }
 
 func (sa *ServiceAccountsService) Run(ctx context.Context) error {
-	sa.log.Debug("Started Service Account Metrics collection service")
-	return sa.store.RunMetricsCollection(ctx)
+	sa.log.Debug("Started Service Account background service")
+
+	if _, err := sa.store.GetUsageMetrics(ctx); err != nil {
+		sa.log.Warn("Failed to get usage metrics", "error", err.Error())
+	}
+
+	updateStatsTicker := time.NewTicker(metricsCollectionInterval)
+	defer updateStatsTicker.Stop()
+
+	for {
+		select {
+		case <-updateStatsTicker.C:
+			if _, err := sa.store.GetUsageMetrics(ctx); err != nil {
+				sa.log.Warn("Failed to get usage metrics", "error", err.Error())
+			}
+		case <-ctx.Done():
+			if err := ctx.Err(); err != nil {
+				return fmt.Errorf("closing context error in service account background service: %w", ctx.Err())
+			}
+
+			return nil
+		}
+	}
 }
 
 func (sa *ServiceAccountsService) CreateServiceAccount(ctx context.Context, orgID int64, saForm *serviceaccounts.CreateServiceAccountForm) (*serviceaccounts.ServiceAccountDTO, error) {

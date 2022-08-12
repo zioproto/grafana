@@ -32,5 +32,4 @@ type Store interface {
 	DeleteServiceAccountToken(ctx context.Context, orgID, serviceAccountID, tokenID int64) error
 	AddServiceAccountToken(ctx context.Context, serviceAccountID int64, cmd *AddServiceAccountTokenCommand) error
 	GetUsageMetrics(ctx context.Context) (map[string]interface{}, error)
-	RunMetricsCollection(ctx context.Context) error
 }
