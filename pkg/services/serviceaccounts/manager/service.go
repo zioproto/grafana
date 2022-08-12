@@ -17,7 +17,7 @@ import (
 
 const (
 	metricsCollectionInterval      = time.Minute * 30
-	defaultTokenCollectionInterval = time.Minute * 10
+	defaultTokenCollectionInterval = time.Minute * 5
 )
 
 type ServiceAccountsService struct {
@@ -66,7 +66,7 @@ func (sa *ServiceAccountsService) Run(ctx context.Context) error {
 	updateStatsTicker := time.NewTicker(metricsCollectionInterval)
 	defer updateStatsTicker.Stop()
 
-	tokenCheckTicker := time.NewTicker(metricsCollectionInterval)
+	tokenCheckTicker := time.NewTicker(defaultTokenCollectionInterval)
 
 	if !sa.checkTokenLeaks {
 		tokenCheckTicker.Stop()
