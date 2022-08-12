@@ -15,11 +15,16 @@ import (
 	"github.com/grafana/grafana/pkg/setting"
 )
 
-const metricsCollectionInterval = time.Minute * 30
+const (
+	metricsCollectionInterval      = time.Minute * 30
+	defaultTokenCollectionInterval = time.Minute * 10
+)
 
 type ServiceAccountsService struct {
-	store serviceaccounts.Store
-	log   log.Logger
+	store           serviceaccounts.Store
+	log             log.Logger
+	backgroundLog   log.Logger
+	checkTokenLeaks bool
 }
 
 func ProvideServiceAccountsService(
@@ -32,8 +37,9 @@ func ProvideServiceAccountsService(
 ) (*ServiceAccountsService, error) {
 	database.InitMetrics()
 	s := &ServiceAccountsService{
-		store: serviceAccountsStore,
-		log:   log.New("serviceaccounts"),
+		store:         serviceAccountsStore,
+		log:           log.New("serviceaccounts"),
+		backgroundLog: log.New("serviceaccounts.background"),
 	}
 
 	if err := RegisterRoles(ac); err != nil {
@@ -45,11 +51,13 @@ func ProvideServiceAccountsService(
 	serviceaccountsAPI := api.NewServiceAccountsAPI(cfg, s, ac, routeRegister, s.store, permissionService)
 	serviceaccountsAPI.RegisterAPIEndpoints()
 
+	s.checkTokenLeaks = cfg.SectionWithEnvOverrides("security").Key("check_token_leaks").MustBool(false)
+
 	return s, nil
 }
 
 func (sa *ServiceAccountsService) Run(ctx context.Context) error {
-	sa.log.Debug("Started Service Account background service")
+	sa.backgroundLog.Debug("service initialized")
 
 	if _, err := sa.store.GetUsageMetrics(ctx); err != nil {
 		sa.log.Warn("Failed to get usage metrics", "error", err.Error())
@@ -58,18 +66,34 @@ func (sa *ServiceAccountsService) Run(ctx context.Context) error {
 	updateStatsTicker := time.NewTicker(metricsCollectionInterval)
 	defer updateStatsTicker.Stop()
 
+	tokenCheckTicker := time.NewTicker(metricsCollectionInterval)
+
+	if !sa.checkTokenLeaks {
+		tokenCheckTicker.Stop()
+	} else {
+		sa.backgroundLog.Debug("enabled token leak check")
+
+		defer tokenCheckTicker.Stop()
+	}
+
 	for {
 		select {
-		case <-updateStatsTicker.C:
-			if _, err := sa.store.GetUsageMetrics(ctx); err != nil {
-				sa.log.Warn("Failed to get usage metrics", "error", err.Error())
-			}
 		case <-ctx.Done():
 			if err := ctx.Err(); err != nil {
-				return fmt.Errorf("closing context error in service account background service: %w", ctx.Err())
+				return fmt.Errorf("context error in service account background service: %w", ctx.Err())
 			}
 
+			sa.backgroundLog.Debug("stopped service account background service")
+
 			return nil
+		case <-updateStatsTicker.C:
+			sa.backgroundLog.Debug("updating usage metrics")
+
+			if _, err := sa.store.GetUsageMetrics(ctx); err != nil {
+				sa.backgroundLog.Warn("Failed to get usage metrics", "error", err.Error())
+			}
+		case <-tokenCheckTicker.C:
+			sa.backgroundLog.Debug("checking for leaked tokens")
 		}
 	}
 }
