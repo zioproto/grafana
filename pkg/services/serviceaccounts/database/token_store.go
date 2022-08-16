@@ -8,21 +8,32 @@ import (
 	"github.com/grafana/grafana/pkg/services/org"
 	"github.com/grafana/grafana/pkg/services/serviceaccounts"
 	"github.com/grafana/grafana/pkg/services/sqlstore"
-	"xorm.io/xorm"
+	"github.com/pkg/errors"
 )
 
-func (s *ServiceAccountsStoreImpl) ListTokens(ctx context.Context, orgId int64, serviceAccountId int64) ([]*apikey.APIKey, error) {
-	result := make([]*apikey.APIKey, 0)
-	err := s.sqlStore.WithDbSession(ctx, func(dbSession *sqlstore.DBSession) error {
-		var sess *xorm.Session
+const maxRetrievedTokens = 300
 
+func (s *ServiceAccountsStoreImpl) ListTokens(
+	ctx context.Context, query *serviceaccounts.GetSATokensQuery,
+) ([]apikey.APIKey, error) {
+	result := make([]apikey.APIKey, 0)
+	err := s.sqlStore.WithDbSession(ctx, func(dbSession *sqlstore.DBSession) error {
 		quotedUser := s.sqlStore.Dialect.Quote("user")
-		sess = dbSession.
-			Join("inner", quotedUser, quotedUser+".id = api_key.service_account_id").
-			Where(quotedUser+".org_id=? AND "+quotedUser+".id=?", orgId, serviceAccountId).
+		sess := dbSession.Limit(maxRetrievedTokens, 0).Where("api_key.service_account_id IS NOT NULL")
+
+		if query.OrgID != nil {
+			sess = sess.Where(quotedUser+".org_id=?", *query.OrgID)
+			sess = sess.Where("api_key.org_id=?", *query.OrgID)
+		}
+
+		if query.ServiceAccountID != nil {
+			sess = sess.Where("api_key.service_account_id=?", *query.ServiceAccountID)
+		}
+
+		sess = sess.Join("inner", quotedUser, quotedUser+".id = api_key.service_account_id").
 			Asc("api_key.name")
 
-		return sess.Find(&result)
+		return errors.Wrapf(sess.Find(&result), "list token error")
 	})
 	return result, err
 }
