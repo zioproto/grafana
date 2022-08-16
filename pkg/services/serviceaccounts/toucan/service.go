@@ -88,10 +88,20 @@ func (s *Service) CheckTokens(ctx context.Context) error {
 	// Could be done in bulk but we don't expect more than 1 or 2 tokens to be leaked per check.
 	for _, leakedTokenHash := range leakedTokenHashes {
 		leakedToken := hashMap[leakedTokenHash]
+		s.logger.Info("revoking leaked token found",
+			"token_id", leakedToken.Id,
+			"token", leakedToken.Name,
+			"org", leakedToken.OrgId,
+			"serviceAccount", leakedToken.ServiceAccountId)
 
 		if err := s.store.DeleteServiceAccountToken(
 			ctx, leakedToken.OrgId, *leakedToken.ServiceAccountId, leakedToken.Id); err != nil {
-			return fmt.Errorf("failed to delete leaked token: %w", err)
+			s.logger.Error("failed to delete leaked token. Revoke manually.",
+				"error", err,
+				"token_id", leakedToken.Id,
+				"token", leakedToken.Name,
+				"org", leakedToken.OrgId,
+				"serviceAccount", leakedToken.ServiceAccountId)
 		}
 	}
 
