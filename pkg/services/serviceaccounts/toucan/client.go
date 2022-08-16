@@ -1,6 +1,7 @@
 package toucan
 
 import (
+	"context"
 	"net/http"
 	"time"
 )
@@ -22,7 +23,7 @@ func newClient() *client {
 
 // checkTokens checks if any leaked tokens exist.
 // Returns list of leaked tokens.
-func (c *client) checkTokens(tokens []string) ([]string, error) {
+func (c *client) checkTokens(ctx context.Context, keyHashes []string) ([]string, error) {
 	leakedTokens := []string{}
 
 	return leakedTokens, nil
