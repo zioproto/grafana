@@ -1,12 +1,23 @@
 package toucan
 
+import (
+	"net/http"
+	"time"
+)
+
+const timeout = 4 * time.Second
+
 // Toucan Client is grafana's client for checking leaked keys.
 // Don't use this client directly,
 // use the toucan Service which handles token collection and checking instead.
-type client struct{}
+type client struct {
+	httpClient *http.Client
+}
 
 func newClient() *client {
-	return &client{}
+	return &client{&http.Client{
+		Timeout: timeout,
+	}}
 }
 
 // checkTokens checks if any leaked tokens exist.
