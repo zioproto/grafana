@@ -30,6 +30,7 @@ type Store interface {
 	RevertApiKey(ctx context.Context, saId int64, keyId int64) error
 	ListTokens(ctx context.Context, query *GetSATokensQuery) ([]apikey.APIKey, error)
 	DeleteServiceAccountToken(ctx context.Context, orgID, serviceAccountID, tokenID int64) error
+	RevokeServiceAccountToken(ctx context.Context, orgId, serviceAccountId, tokenId int64) error
 	AddServiceAccountToken(ctx context.Context, serviceAccountID int64, cmd *AddServiceAccountTokenCommand) error
 	GetUsageMetrics(ctx context.Context) (map[string]interface{}, error)
 }

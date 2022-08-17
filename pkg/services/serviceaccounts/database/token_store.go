@@ -96,6 +96,23 @@ func (s *ServiceAccountsStoreImpl) DeleteServiceAccountToken(ctx context.Context
 	})
 }
 
+func (s *ServiceAccountsStoreImpl) RevokeServiceAccountToken(ctx context.Context, orgId, serviceAccountId, tokenId int64) error {
+	rawSQL := "UPDATE api_key SET is_revoked = ? WHERE id=? and org_id=? and service_account_id=?"
+
+	return s.sqlStore.WithDbSession(ctx, func(sess *sqlstore.DBSession) error {
+		result, err := sess.Exec(rawSQL, s.sqlStore.Dialect.BooleanStr(true), tokenId, orgId, serviceAccountId)
+		if err != nil {
+			return err
+		}
+		affected, err := result.RowsAffected()
+		if affected == 0 {
+			return ErrServiceAccountTokenNotFound
+		}
+
+		return err
+	})
+}
+
 // assignApiKeyToServiceAccount sets the API key service account ID
 func (s *ServiceAccountsStoreImpl) assignApiKeyToServiceAccount(sess *sqlstore.DBSession, apiKeyId int64, serviceAccountId int64) error {
 	key := apikey.APIKey{Id: apiKeyId}

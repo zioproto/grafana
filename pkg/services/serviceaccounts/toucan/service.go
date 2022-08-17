@@ -19,7 +19,7 @@ type Checker interface {
 
 type SATokenRetriever interface {
 	ListTokens(ctx context.Context, query *serviceaccounts.GetSATokensQuery) ([]apikey.APIKey, error)
-	DeleteServiceAccountToken(ctx context.Context, orgID, serviceAccountID, tokenID int64) error
+	RevokeServiceAccountToken(ctx context.Context, orgID, serviceAccountID, tokenID int64) error
 }
 
 // Toucan Service is grafana's service for checking leaked keys.
@@ -99,7 +99,7 @@ func (s *Service) CheckTokens(ctx context.Context) error {
 	for _, toucanToken := range toucanTokens {
 		leakedToken := hashMap[toucanToken.Hash]
 
-		if err := s.store.DeleteServiceAccountToken(
+		if err := s.store.RevokeServiceAccountToken(
 			ctx, leakedToken.OrgId, *leakedToken.ServiceAccountId, leakedToken.Id); err != nil {
 			s.logger.Error("failed to delete leaked token. Revoke manually.",
 				"error", err,
