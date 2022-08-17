@@ -41,7 +41,7 @@ export const ServiceAccountTokensTable = ({ tokens, timeZone, tokenActionsDisabl
               <td className="width-1 text-center">
                 {key.isRevoked && (
                   <span
-                    title="Token was automatically revoked by Grafana due to a leak"
+                    title="This token was reported as exposed by GitHub and was automatically revoked."
                     className="label label-tag label-tag--gray"
                   >
                     Revoked
