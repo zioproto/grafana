@@ -8,7 +8,10 @@ import (
 	"github.com/grafana/grafana/pkg/infra/log"
 	"github.com/grafana/grafana/pkg/services/apikey"
 	"github.com/grafana/grafana/pkg/services/serviceaccounts"
+	"github.com/grafana/grafana/pkg/setting"
 )
+
+const defaultURL = "https://toucan.grafana.com"
 
 type Checker interface {
 	CheckTokens(ctx context.Context) error
@@ -26,10 +29,11 @@ type Service struct {
 	logger log.Logger
 }
 
-func NewService(store SATokenRetriever) *Service {
+func NewService(store SATokenRetriever, cfg *setting.Cfg) *Service {
+	toucanBaseURL := cfg.SectionWithEnvOverrides("toucan").Key("base_url").MustString(defaultURL)
 	return &Service{
 		store:  store,
-		client: newClient(),
+		client: newClient(toucanBaseURL, cfg.BuildVersion),
 		logger: log.New("toucan"),
 	}
 }
