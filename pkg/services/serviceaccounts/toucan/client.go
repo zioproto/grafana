@@ -26,7 +26,7 @@ type toucanRequest struct {
 	KeyHashes []string `json:"hashes"`
 }
 
-type toucanToken struct {
+type ToucanToken struct {
 	Type       string `json:"type"`
 	URL        string `json:"url"`
 	Hash       string `json:"hash"`
@@ -44,9 +44,7 @@ func newClient(url, version string) *client {
 
 // checkTokens checks if any leaked tokens exist.
 // Returns list of leaked tokens.
-func (c *client) checkTokens(ctx context.Context, keyHashes []string) ([]string, error) {
-	leakedTokens := []string{}
-
+func (c *client) checkTokens(ctx context.Context, keyHashes []string) ([]ToucanToken, error) {
 	// create request body
 	values := toucanRequest{KeyHashes: keyHashes}
 
@@ -82,14 +80,10 @@ func (c *client) checkTokens(ctx context.Context, keyHashes []string) ([]string,
 	}
 
 	// decode response body
-	var tokens []toucanToken
+	var tokens []ToucanToken
 	if err := json.NewDecoder(resp.Body).Decode(&tokens); err != nil {
 		return nil, errors.Wrap(err, "toucan client failed to decode response body")
 	}
 
-	for _, token := range tokens {
-		leakedTokens = append(leakedTokens, token.Hash)
-	}
-
-	return leakedTokens, nil
+	return tokens, nil
 }

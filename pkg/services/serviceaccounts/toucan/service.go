@@ -89,30 +89,35 @@ func (s *Service) CheckTokens(ctx context.Context) error {
 	}
 
 	// Check if any leaked tokens exist.
-	leakedTokenHashes, err := s.client.checkTokens(ctx, hashes)
+	toucanTokens, err := s.client.checkTokens(ctx, hashes)
 	if err != nil {
 		return fmt.Errorf("failed to check tokens: %w", err)
 	}
 
 	// Revoke leaked tokens.
 	// Could be done in bulk but we don't expect more than 1 or 2 tokens to be leaked per check.
-	for _, leakedTokenHash := range leakedTokenHashes {
-		leakedToken := hashMap[leakedTokenHash]
-		s.logger.Info("revoked leaked token",
-			"token_id", leakedToken.Id,
-			"token", leakedToken.Name,
-			"org", leakedToken.OrgId,
-			"serviceAccount", leakedToken.ServiceAccountId)
+	for _, toucanToken := range toucanTokens {
+		leakedToken := hashMap[toucanToken.Hash]
 
 		if err := s.store.DeleteServiceAccountToken(
 			ctx, leakedToken.OrgId, *leakedToken.ServiceAccountId, leakedToken.Id); err != nil {
 			s.logger.Error("failed to delete leaked token. Revoke manually.",
 				"error", err,
+				"url", toucanToken.URL,
+				"reported_at", toucanToken.ReportedAt,
 				"token_id", leakedToken.Id,
 				"token", leakedToken.Name,
 				"org", leakedToken.OrgId,
-				"serviceAccount", leakedToken.ServiceAccountId)
+				"serviceAccount", *leakedToken.ServiceAccountId)
 		}
+
+		s.logger.Info("revoked leaked token",
+			"url", toucanToken.URL,
+			"reported_at", toucanToken.ReportedAt,
+			"token_id", leakedToken.Id,
+			"token", leakedToken.Name,
+			"org", leakedToken.OrgId,
+			"serviceAccount", *leakedToken.ServiceAccountId)
 	}
 
 	return nil
