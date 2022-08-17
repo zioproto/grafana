@@ -37,6 +37,8 @@ type TokenDTO struct {
 	SecondsUntilExpiration *float64 `json:"secondsUntilExpiration"`
 	// example: false
 	HasExpired bool `json:"hasExpired"`
+	// example: false
+	IsRevoked *bool `json:"isRevoked"`
 }
 
 func hasExpired(expiration *int64) bool {
@@ -103,6 +105,7 @@ func (api *ServiceAccountsAPI) ListTokens(ctx *models.ReqContext) response.Respo
 			SecondsUntilExpiration: &secondsUntilExpiration,
 			HasExpired:             isExpired,
 			LastUsedAt:             token.LastUsedAt,
+			IsRevoked:              token.IsRevoked,
 		}
 	}
 

@@ -26,6 +26,7 @@ type APIKey struct {
 	LastUsedAt       *time.Time `xorm:"last_used_at"`
 	Expires          *int64
 	ServiceAccountId *int64
+	IsRevoked        *bool `xorm:"is_revoked"`
 }
 
 func (k APIKey) TableName() string { return "api_key" }
