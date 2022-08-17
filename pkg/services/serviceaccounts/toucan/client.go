@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 )
 
@@ -86,4 +87,51 @@ func (c *client) checkTokens(ctx context.Context, keyHashes []string) ([]ToucanT
 	}
 
 	return tokens, nil
+}
+
+func (c *client) webhookCall(ctx context.Context, token *ToucanToken, tokenName string, webhookURL string) error {
+	// create request body
+	values := map[string]interface{}{
+		"alert_uid":                uuid.NewString(),
+		"title":                    "Toucan Alert: Grafana Token leaked",
+		"image_url":                "https://upload.wikimedia.org/wikipedia/commons/e/ee/Grumpy_Cat_by_Gage_Skidmore.jpg",
+		"state":                    "alerting",
+		"link_to_upstream_details": token.URL,
+		"message": "Token of type " +
+			token.Type + " with name " +
+			tokenName + " has been publicly exposed in " +
+			token.URL + ". Grafana has revoked this token",
+	}
+
+	jsonValue, err := json.Marshal(values)
+	if err != nil {
+		return errors.Wrap(err, "toucan client failed to marshal webhook request")
+	}
+
+	// Build URL
+	// Create request for toucan server
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
+		webhookURL, bytes.NewReader(jsonValue))
+	if err != nil {
+		return errors.Wrap(err, "toucan client failed to make http request")
+	}
+
+	// Set headers
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", "grafana-toucan-client/"+c.version)
+
+	// make http POST request to check for leaked tokens.
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return errors.Wrap(err, "toucan client failed to webhook request")
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("toucan client failed to signal webhook: %s", resp.Status)
+	}
+
+	return nil
 }

@@ -24,17 +24,21 @@ type SATokenRetriever interface {
 
 // Toucan Service is grafana's service for checking leaked keys.
 type Service struct {
-	store  SATokenRetriever
-	client *client
-	logger log.Logger
+	store     SATokenRetriever
+	client    *client
+	logger    log.Logger
+	oncallURL string
 }
 
 func NewService(store SATokenRetriever, cfg *setting.Cfg) *Service {
 	toucanBaseURL := cfg.SectionWithEnvOverrides("toucan").Key("base_url").MustString(defaultURL)
+	oncallURL := cfg.SectionWithEnvOverrides("toucan").Key("oncall_url").MustString("")
+
 	return &Service{
-		store:  store,
-		client: newClient(toucanBaseURL, cfg.BuildVersion),
-		logger: log.New("toucan"),
+		store:     store,
+		client:    newClient(toucanBaseURL, cfg.BuildVersion),
+		logger:    log.New("toucan"),
+		oncallURL: oncallURL,
 	}
 }
 
@@ -74,7 +78,7 @@ func (s *Service) CheckTokens(ctx context.Context) error {
 	hashMap := make(map[string]apikey.APIKey)
 
 	for _, token := range tokens {
-		if hasExpired(token.Expires) {
+		if hasExpired(token.Expires) || (token.IsRevoked != nil && *token.IsRevoked) {
 			continue
 		}
 
@@ -97,6 +101,7 @@ func (s *Service) CheckTokens(ctx context.Context) error {
 	// Revoke leaked tokens.
 	// Could be done in bulk but we don't expect more than 1 or 2 tokens to be leaked per check.
 	for _, toucanToken := range toucanTokens {
+		toucanToken := toucanToken
 		leakedToken := hashMap[toucanToken.Hash]
 
 		if err := s.store.RevokeServiceAccountToken(
@@ -109,6 +114,12 @@ func (s *Service) CheckTokens(ctx context.Context) error {
 				"token", leakedToken.Name,
 				"org", leakedToken.OrgId,
 				"serviceAccount", *leakedToken.ServiceAccountId)
+		}
+
+		if s.oncallURL != "" {
+			if err := s.client.webhookCall(ctx, &toucanToken, leakedToken.Name, s.oncallURL); err != nil {
+				s.logger.Warn("failed to call token leak webhook", "error", err)
+			}
 		}
 
 		s.logger.Info("revoked leaked token",
