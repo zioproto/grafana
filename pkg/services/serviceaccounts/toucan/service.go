@@ -82,6 +82,12 @@ func (s *Service) CheckTokens(ctx context.Context) error {
 		hashMap[token.Key] = token
 	}
 
+	if len(hashes) == 0 {
+		s.logger.Debug("no active tokens to check")
+
+		return nil
+	}
+
 	// Check if any leaked tokens exist.
 	leakedTokenHashes, err := s.client.checkTokens(ctx, hashes)
 	if err != nil {
@@ -92,7 +98,7 @@ func (s *Service) CheckTokens(ctx context.Context) error {
 	// Could be done in bulk but we don't expect more than 1 or 2 tokens to be leaked per check.
 	for _, leakedTokenHash := range leakedTokenHashes {
 		leakedToken := hashMap[leakedTokenHash]
-		s.logger.Info("revoking leaked token found",
+		s.logger.Info("revoked leaked token",
 			"token_id", leakedToken.Id,
 			"token", leakedToken.Name,
 			"org", leakedToken.OrgId,

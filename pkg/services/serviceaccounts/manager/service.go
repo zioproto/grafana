@@ -84,12 +84,15 @@ func (sa *ServiceAccountsService) Run(ctx context.Context) error {
 	updateStatsTicker := time.NewTicker(metricsCollectionInterval)
 	defer updateStatsTicker.Stop()
 
-	tokenCheckTicker := time.NewTicker(defaultTokenCollectionInterval)
+	tokenCheckTicker := time.NewTicker(sa.checkTokenInterval)
 
 	if !sa.checkTokenLeaks {
 		tokenCheckTicker.Stop()
 	} else {
-		sa.backgroundLog.Debug("enabled token leak check")
+		sa.backgroundLog.Debug("enabled token leak check and executing first check")
+		if err := sa.toucanService.CheckTokens(ctx); err != nil {
+			sa.backgroundLog.Warn("Failed to check for leaked tokens", "error", err.Error())
+		}
 
 		defer tokenCheckTicker.Stop()
 	}

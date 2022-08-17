@@ -27,9 +27,10 @@ type toucanRequest struct {
 }
 
 type toucanToken struct {
-	Type string `json:"type"`
-	URL  string `json:"url"`
-	Hash string `json:"hash"`
+	Type       string `json:"type"`
+	URL        string `json:"url"`
+	Hash       string `json:"hash"`
+	ReportedAt string `json:"reported_at"`
 }
 
 func newClient(url, version string) *client {
@@ -51,7 +52,7 @@ func (c *client) checkTokens(ctx context.Context, keyHashes []string) ([]string,
 
 	jsonValue, err := json.Marshal(values)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "toucan client failed to make http request")
 	}
 
 	// Build URL
