@@ -74,7 +74,7 @@ func (c *client) checkTokens(ctx context.Context, keyHashes []string) ([]ToucanT
 		return nil, errors.Wrap(err, "toucan client failed to do http request")
 	}
 
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("toucan client received invalid status: %s", resp.Status)
@@ -127,7 +127,7 @@ func (c *client) webhookCall(ctx context.Context, token *ToucanToken, tokenName 
 		return errors.Wrap(err, "toucan client failed to webhook request")
 	}
 
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("toucan client failed to signal webhook: %s", resp.Status)
