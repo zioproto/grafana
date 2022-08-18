@@ -39,14 +39,7 @@ export const ServiceAccountTokensTable = ({ tokens, timeZone, tokenActionsDisabl
               <td>{formatDate(timeZone, key.created)}</td>
               <td>{formatLastUsedAtDate(timeZone, key.lastUsedAt)}</td>
               <td className="width-1 text-center">
-                {key.isRevoked && (
-                  <span
-                    title="This token was reported as exposed by GitHub and was automatically revoked."
-                    className="label label-tag label-tag--gray"
-                  >
-                    Revoked
-                  </span>
-                )}
+                {key.isRevoked && <span className="label label-tag label-tag--gray">Revoked</span>}
               </td>
               <td>
                 <DeleteButton

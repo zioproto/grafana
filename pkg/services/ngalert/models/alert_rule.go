@@ -227,6 +227,10 @@ type AlertRuleKey struct {
 	UID   string `xorm:"uid"`
 }
 
+func (k AlertRuleKey) LogContext() []interface{} {
+	return []interface{}{"rule_uid", k.UID, "org_id", k.OrgID}
+}
+
 type AlertRuleKeyWithVersion struct {
 	Version      int64
 	AlertRuleKey `xorm:"extends"`
@@ -394,7 +398,8 @@ func (c Condition) IsValid() bool {
 // There are several exceptions:
 // 1. Following fields are not patched and therefore will be ignored: AlertRule.ID, AlertRule.OrgID, AlertRule.Updated, AlertRule.Version, AlertRule.UID, AlertRule.DashboardUID, AlertRule.PanelID, AlertRule.Annotations and AlertRule.Labels
 // 2. There are fields that are patched together:
-//    - AlertRule.Condition and AlertRule.Data
+//   - AlertRule.Condition and AlertRule.Data
+//
 // If either of the pair is specified, neither is patched.
 func PatchPartialAlertRule(existingRule *AlertRule, ruleToPatch *AlertRule) {
 	if ruleToPatch.Title == "" {

@@ -26,6 +26,7 @@ import (
 
 // ScheduleService is an interface for a service that schedules the evaluation
 // of alert rules.
+//
 //go:generate mockery --name ScheduleService --structname FakeScheduleService --inpackage --filename schedule_mock.go --with-expecter
 type ScheduleService interface {
 	// Run the scheduler until the context is canceled or the scheduler returns
@@ -41,8 +42,9 @@ type ScheduleService interface {
 	overrideCfg(cfg SchedulerCfg)
 }
 
-//go:generate mockery --name AlertsSender --structname AlertsSenderMock --inpackage --filename alerts_sender_mock.go --with-expecter
 // AlertsSender is an interface for a service that is responsible for sending notifications to the end-user.
+//
+//go:generate mockery --name AlertsSender --structname AlertsSenderMock --inpackage --filename alerts_sender_mock.go --with-expecter
 type AlertsSender interface {
 	Send(key ngmodels.AlertRuleKey, alerts definitions.PostableAlerts)
 }
@@ -74,8 +76,7 @@ type schedule struct {
 
 	evaluator eval.Evaluator
 
-	ruleStore     store.RuleStore
-	instanceStore store.InstanceStore
+	ruleStore store.RuleStore
 
 	stateManager *state.Manager
 
@@ -123,7 +124,6 @@ func NewScheduler(cfg SchedulerCfg, appURL *url.URL, stateManager *state.Manager
 		stopAppliedFunc:       cfg.StopAppliedFunc,
 		evaluator:             cfg.Evaluator,
 		ruleStore:             cfg.RuleStore,
-		instanceStore:         cfg.InstanceStore,
 		metrics:               cfg.Metrics,
 		appURL:                appURL,
 		disableGrafanaFolder:  cfg.Cfg.ReservedLabels.IsReservedLabelDisabled(ngmodels.FolderTitleLabel),
@@ -278,18 +278,10 @@ func (sch *schedule) schedulePeriodic(ctx context.Context) error {
 
 			sch.metrics.SchedulePeriodicDuration.Observe(time.Since(start).Seconds())
 		case <-ctx.Done():
+			// waiting for all rule evaluation routines to stop
 			waitErr := dispatcherGroup.Wait()
-
-			orgIds, err := sch.instanceStore.FetchOrgIds(ctx)
-			if err != nil {
-				sch.log.Error("unable to fetch orgIds", "msg", err.Error())
-			}
-
-			for _, v := range orgIds {
-				sch.saveAlertStates(ctx, sch.stateManager.GetAll(v))
-			}
-
-			sch.stateManager.Close()
+			// close the state manager and flush the state
+			sch.stateManager.Close(ctx)
 			return waitErr
 		}
 	}
@@ -329,7 +321,6 @@ func (sch *schedule) ruleRoutine(grafanaCtx context.Context, key ngmodels.AlertR
 		}
 
 		processedStates := sch.stateManager.ProcessEvalResults(ctx, e.scheduledAt, e.rule, results, extraLabels)
-		sch.saveAlertStates(ctx, processedStates)
 		alerts := FromAlertStateToPostableAlerts(processedStates, sch.stateManager, sch.appURL)
 		if len(alerts.PostableAlerts) > 0 {
 			sch.alertsSender.Send(key, alerts)
@@ -410,26 +401,6 @@ func (sch *schedule) ruleRoutine(grafanaCtx context.Context, key ngmodels.AlertR
 			clearState()
 			logger.Debug("stopping alert rule routine")
 			return nil
-		}
-	}
-}
-
-func (sch *schedule) saveAlertStates(ctx context.Context, states []*state.State) {
-	sch.log.Debug("saving alert states", "count", len(states))
-	for _, s := range states {
-		cmd := ngmodels.SaveAlertInstanceCommand{
-			RuleOrgID:         s.OrgID,
-			RuleUID:           s.AlertRuleUID,
-			Labels:            ngmodels.InstanceLabels(s.Labels),
-			State:             ngmodels.InstanceStateType(s.State.String()),
-			StateReason:       s.StateReason,
-			LastEvalTime:      s.LastEvaluationTime,
-			CurrentStateSince: s.StartsAt,
-			CurrentStateEnd:   s.EndsAt,
-		}
-		err := sch.instanceStore.SaveAlertInstance(ctx, &cmd)
-		if err != nil {
-			sch.log.Error("failed to save alert state", "uid", s.AlertRuleUID, "orgId", s.OrgID, "labels", s.Labels.String(), "state", s.State.String(), "msg", err.Error())
 		}
 	}
 }
