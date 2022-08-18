@@ -94,7 +94,7 @@ func (c *client) webhookCall(ctx context.Context, token *ToucanToken, tokenName 
 	values := map[string]interface{}{
 		"alert_uid":                uuid.NewString(),
 		"title":                    "Toucan Alert: Grafana Token leaked",
-		"image_url":                "https://upload.wikimedia.org/wikipedia/commons/e/ee/Grumpy_Cat_by_Gage_Skidmore.jpg",
+		"image_url":                "https://images.pexels.com/photos/5119737/pexels-photo-5119737.jpeg?auto=compress&cs=tinysrgb&w=300", //nolint
 		"state":                    "alerting",
 		"link_to_upstream_details": token.URL,
 		"message": "Token of type " +
