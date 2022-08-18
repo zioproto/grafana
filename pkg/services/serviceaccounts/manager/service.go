@@ -60,14 +60,6 @@ func ProvideServiceAccountsService(
 		s.checkTokenInterval = cfg.SectionWithEnvOverrides("toucan").
 			Key("interval").MustDuration(defaultTokenCollectionInterval)
 
-		// Enforce a minimum interval of 1 minute.
-		if s.checkTokenInterval < time.Minute {
-			s.backgroundLog.Warn("token leak check interval is too low, increasing to " +
-				defaultTokenCollectionInterval.String())
-
-			s.checkTokenInterval = defaultTokenCollectionInterval
-		}
-
 		s.toucanService = toucan.NewService(s.store, cfg)
 	}
 
@@ -83,6 +75,14 @@ func (sa *ServiceAccountsService) Run(ctx context.Context) error {
 
 	updateStatsTicker := time.NewTicker(metricsCollectionInterval)
 	defer updateStatsTicker.Stop()
+
+	// Enforce a minimum interval of 1 minute.
+	if sa.checkTokenInterval < time.Minute {
+		sa.backgroundLog.Warn("token leak check interval is too low, increasing to " +
+			defaultTokenCollectionInterval.String())
+
+		sa.checkTokenInterval = defaultTokenCollectionInterval
+	}
 
 	tokenCheckTicker := time.NewTicker(sa.checkTokenInterval)
 
