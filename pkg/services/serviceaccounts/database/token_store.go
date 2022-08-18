@@ -2,7 +2,6 @@ package database
 
 import (
 	"context"
-	"time"
 
 	"github.com/grafana/grafana/pkg/services/apikey"
 	"github.com/grafana/grafana/pkg/services/org"
@@ -44,37 +43,27 @@ func (s *ServiceAccountsStoreImpl) AddServiceAccountToken(ctx context.Context, s
 			return err
 		}
 
-		key := apikey.APIKey{OrgId: cmd.OrgId, Name: cmd.Name}
-		exists, _ := sess.Get(&key)
-		if exists {
-			return ErrDuplicateToken
-		}
-
-		updated := time.Now()
-		var expires *int64 = nil
-		if cmd.SecondsToLive > 0 {
-			v := updated.Add(time.Second * time.Duration(cmd.SecondsToLive)).Unix()
-			expires = &v
-		} else if cmd.SecondsToLive < 0 {
-			return ErrInvalidTokenExpiration
-		}
-
-		token := apikey.APIKey{
-			OrgId:            cmd.OrgId,
+		addKeyCmd := &apikey.AddCommand{
 			Name:             cmd.Name,
 			Role:             org.RoleViewer,
+			OrgId:            cmd.OrgId,
 			Key:              cmd.Key,
-			Created:          updated,
-			Updated:          updated,
-			Expires:          expires,
-			LastUsedAt:       nil,
-			ServiceAccountId: &serviceAccountId,
+			SecondsToLive:    cmd.SecondsToLive,
+			ServiceAccountID: &serviceAccountId,
 		}
 
-		if _, err := sess.Insert(&token); err != nil {
+		if err := s.apiKeyService.AddAPIKey(ctx, addKeyCmd); err != nil {
+			switch {
+			case errors.Is(err, apikey.ErrDuplicate):
+				return ErrDuplicateToken
+			case errors.Is(err, apikey.ErrInvalidExpiration):
+				return ErrInvalidTokenExpiration
+			}
+
 			return err
 		}
-		cmd.Result = &token
+
+		cmd.Result = addKeyCmd.Result
 		return nil
 	})
 }
