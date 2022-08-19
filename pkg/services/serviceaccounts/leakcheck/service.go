@@ -17,6 +17,14 @@ type Checker interface {
 	CheckTokens(ctx context.Context) error
 }
 
+type CheckerClient interface {
+	CheckTokens(ctx context.Context, keyHashes []string) ([]Token, error)
+}
+
+type WebHookClient interface {
+	Notify(ctx context.Context, token *Token, tokenName string, revoked bool) error
+}
+
 type SATokenRetriever interface {
 	ListTokens(ctx context.Context, query *serviceaccounts.GetSATokensQuery) ([]apikey.APIKey, error)
 	RevokeServiceAccountToken(ctx context.Context, orgID, serviceAccountID, tokenID int64) error
@@ -25,8 +33,8 @@ type SATokenRetriever interface {
 // Leak Check Service is grafana's service for checking leaked keys.
 type Service struct {
 	store         SATokenRetriever
-	client        *client
-	webHookClient *webHookClient
+	client        CheckerClient
+	webHookClient WebHookClient
 	logger        log.Logger
 	webHookNotify bool
 	revoke        bool // whether to revoke leaked tokens
@@ -88,7 +96,7 @@ func (s *Service) CheckTokens(ctx context.Context) error {
 	}
 
 	// Check if any leaked tokens exist.
-	leakcheckTokens, err := s.client.checkTokens(ctx, hashes)
+	leakcheckTokens, err := s.client.CheckTokens(ctx, hashes)
 	if err != nil {
 		return fmt.Errorf("failed to check tokens: %w", err)
 	}
@@ -110,7 +118,7 @@ func (s *Service) CheckTokens(ctx context.Context) error {
 		}
 
 		if s.webHookNotify {
-			if err := s.client.WebhookNotify(ctx, &leakcheckToken, leakedToken.Name, s.revoke); err != nil {
+			if err := s.webHookClient.Notify(ctx, &leakcheckToken, leakedToken.Name, s.revoke); err != nil {
 				s.logger.Warn("failed to call token leak webhook", "error", err)
 			}
 		}

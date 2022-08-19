@@ -25,14 +25,16 @@ func newWebHookClient(url, version string) *webHookClient {
 		version: version,
 		url:     url,
 		httpClient: &http.Client{
-			Timeout: timeout,
+			Transport:     nil,
+			CheckRedirect: nil,
+			Jar:           nil,
+			Timeout:       timeout,
 		},
 	}
 }
 
-func (c *client) WebhookNotify(ctx context.Context,
-	token *Token,
-	tokenName string, revoked bool,
+func (wClient *webHookClient) Notify(ctx context.Context,
+	token *Token, tokenName string, revoked bool,
 ) error {
 	revokedMsg := ""
 	if revoked {
@@ -60,7 +62,7 @@ func (c *client) WebhookNotify(ctx context.Context,
 	// Build URL
 	// Create request for leakcheck server
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
-		c.baseURL, bytes.NewReader(jsonValue))
+		wClient.url, bytes.NewReader(jsonValue))
 	if err != nil {
 		return errors.Wrap(err, "failed to make http request")
 	}
@@ -68,10 +70,10 @@ func (c *client) WebhookNotify(ctx context.Context,
 	// Set headers
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("User-Agent", "grafana-leakcheck-webhook-client/"+c.version)
+	req.Header.Set("User-Agent", "grafana-leakcheck-webhook-client/"+wClient.version)
 
 	// make http POST request to check for leaked tokens.
-	resp, err := c.httpClient.Do(req)
+	resp, err := wClient.httpClient.Do(req)
 	if err != nil {
 		return errors.Wrap(err, "failed to webhook request")
 	}

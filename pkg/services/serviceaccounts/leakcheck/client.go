@@ -30,7 +30,7 @@ type Token struct {
 	Type       string `json:"type"`
 	URL        string `json:"url"`
 	Hash       string `json:"hash"`
-	ReportedAt string `json:"reported_at"`
+	ReportedAt string `json:"reported_at"` //nolint
 }
 
 var ErrInvalidStatusCode = errors.New("invalid status code")
@@ -40,14 +40,17 @@ func newClient(url, version string) *client {
 		version: version,
 		baseURL: url,
 		httpClient: &http.Client{
-			Timeout: timeout,
+			Timeout:       timeout,
+			Transport:     nil,
+			CheckRedirect: nil,
+			Jar:           nil,
 		},
 	}
 }
 
 // checkTokens checks if any leaked tokens exist.
 // Returns list of leaked tokens.
-func (c *client) checkTokens(ctx context.Context, keyHashes []string) ([]Token, error) {
+func (c *client) CheckTokens(ctx context.Context, keyHashes []string) ([]Token, error) {
 	// create request body
 	values := leakcheckRequest{KeyHashes: keyHashes}
 
