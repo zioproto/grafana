@@ -24,24 +24,27 @@ type SATokenRetriever interface {
 
 // Leak Check Service is grafana's service for checking leaked keys.
 type Service struct {
-	store     SATokenRetriever
-	client    *client
-	logger    log.Logger
-	oncallURL string // URL to send outgoing webhook when a token is leaked.
-	revoke    bool   // whether to revoke leaked tokens
+	store         SATokenRetriever
+	client        *client
+	webHookClient *webHookClient
+	logger        log.Logger
+	webHookNotify bool
+	revoke        bool // whether to revoke leaked tokens
 }
 
 func NewService(store SATokenRetriever, cfg *setting.Cfg) *Service {
 	leakcheckBaseURL := cfg.SectionWithEnvOverrides("leakcheck").Key("base_url").MustString(defaultURL)
+	// URL to send outgoing webhook when a token is leaked.
 	oncallURL := cfg.SectionWithEnvOverrides("leakcheck").Key("oncall_url").MustString("")
 	revoke := cfg.SectionWithEnvOverrides("leakcheck").Key("revoke").MustBool(true)
 
 	return &Service{
-		store:     store,
-		client:    newClient(leakcheckBaseURL, cfg.BuildVersion),
-		logger:    log.New("leakcheck"),
-		oncallURL: oncallURL,
-		revoke:    revoke,
+		store:         store,
+		client:        newClient(leakcheckBaseURL, cfg.BuildVersion),
+		webHookClient: newWebHookClient(oncallURL, cfg.BuildVersion),
+		logger:        log.New("leakcheck"),
+		webHookNotify: oncallURL != "",
+		revoke:        revoke,
 	}
 }
 
@@ -106,8 +109,8 @@ func (s *Service) CheckTokens(ctx context.Context) error {
 			}
 		}
 
-		if s.oncallURL != "" {
-			if err := s.client.webhookCall(ctx, &leakcheckToken, leakedToken.Name, s.oncallURL); err != nil {
+		if s.webHookNotify {
+			if err := s.client.WebhookNotify(ctx, &leakcheckToken, leakedToken.Name, s.revoke); err != nil {
 				s.logger.Warn("failed to call token leak webhook", "error", err)
 			}
 		}
