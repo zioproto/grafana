@@ -34,6 +34,8 @@ type LeakCheckToken struct {
 	ReportedAt string `json:"reported_at"`
 }
 
+var ErrInvalidStatusCode = errors.New("invalid status code")
+
 func newClient(url, version string) *client {
 	return &client{
 		version: version,
@@ -51,7 +53,7 @@ func (c *client) checkTokens(ctx context.Context, keyHashes []string) ([]LeakChe
 
 	jsonValue, err := json.Marshal(values)
 	if err != nil {
-		return nil, errors.Wrap(err, "leakcheck client failed to make http request")
+		return nil, errors.Wrap(err, "failed to make http request")
 	}
 
 	// Build URL
@@ -60,7 +62,7 @@ func (c *client) checkTokens(ctx context.Context, keyHashes []string) ([]LeakChe
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
 		url, bytes.NewReader(jsonValue))
 	if err != nil {
-		return nil, errors.Wrap(err, "leakcheck client failed to make http request")
+		return nil, errors.Wrap(err, "failed to make http request")
 	}
 
 	// Set headers
@@ -71,19 +73,19 @@ func (c *client) checkTokens(ctx context.Context, keyHashes []string) ([]LeakChe
 	// make http POST request to check for leaked tokens.
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return nil, errors.Wrap(err, "leakcheck client failed to do http request")
+		return nil, errors.Wrap(err, "failed to do http request")
 	}
 
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("leakcheck client received invalid status: %s", resp.Status)
+		return nil, fmt.Errorf("%w. status code: %s", ErrInvalidStatusCode, resp.Status)
 	}
 
 	// decode response body
 	var tokens []LeakCheckToken
 	if err := json.NewDecoder(resp.Body).Decode(&tokens); err != nil {
-		return nil, errors.Wrap(err, "leakcheck client failed to decode response body")
+		return nil, errors.Wrap(err, "failed to decode response body")
 	}
 
 	return tokens, nil
@@ -105,7 +107,7 @@ func (c *client) webhookCall(ctx context.Context, token *LeakCheckToken, tokenNa
 
 	jsonValue, err := json.Marshal(values)
 	if err != nil {
-		return errors.Wrap(err, "leakcheck client failed to marshal webhook request")
+		return errors.Wrap(err, "failed to marshal webhook request")
 	}
 
 	// Build URL
@@ -113,7 +115,7 @@ func (c *client) webhookCall(ctx context.Context, token *LeakCheckToken, tokenNa
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
 		webhookURL, bytes.NewReader(jsonValue))
 	if err != nil {
-		return errors.Wrap(err, "leakcheck client failed to make http request")
+		return errors.Wrap(err, "failed to make http request")
 	}
 
 	// Set headers
@@ -124,13 +126,13 @@ func (c *client) webhookCall(ctx context.Context, token *LeakCheckToken, tokenNa
 	// make http POST request to check for leaked tokens.
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return errors.Wrap(err, "leakcheck client failed to webhook request")
+		return errors.Wrap(err, "failed to webhook request")
 	}
 
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("leakcheck client failed to signal webhook: %s", resp.Status)
+		return fmt.Errorf("failed to signal webhook: %s", resp.Status)
 	}
 
 	return nil
