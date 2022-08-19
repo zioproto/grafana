@@ -27,18 +27,21 @@ type Service struct {
 	store     SATokenRetriever
 	client    *client
 	logger    log.Logger
-	oncallURL string
+	oncallURL string // URL to send outgoing webhook when a token is leaked.
+	revoke    bool   // whether to revoke leaked tokens
 }
 
 func NewService(store SATokenRetriever, cfg *setting.Cfg) *Service {
 	leakcheckBaseURL := cfg.SectionWithEnvOverrides("leakcheck").Key("base_url").MustString(defaultURL)
 	oncallURL := cfg.SectionWithEnvOverrides("leakcheck").Key("oncall_url").MustString("")
+	revoke := cfg.SectionWithEnvOverrides("leakcheck").Key("revoke").MustBool(true)
 
 	return &Service{
 		store:     store,
 		client:    newClient(leakcheckBaseURL, cfg.BuildVersion),
 		logger:    log.New("leakcheck"),
 		oncallURL: oncallURL,
+		revoke:    revoke,
 	}
 }
 
@@ -74,18 +77,7 @@ func (s *Service) CheckTokens(ctx context.Context) error {
 		return fmt.Errorf("failed to retrieve tokens for checking: %w", err)
 	}
 
-	hashes := make([]string, 0, len(tokens))
-	hashMap := make(map[string]apikey.APIKey)
-
-	for _, token := range tokens {
-		if hasExpired(token.Expires) || (token.IsRevoked != nil && *token.IsRevoked) {
-			continue
-		}
-
-		hashes = append(hashes, token.Key)
-		hashMap[token.Key] = token
-	}
-
+	hashes, hashMap := s.filterCheckableTokens(tokens)
 	if len(hashes) == 0 {
 		s.logger.Debug("no active tokens to check")
 
@@ -104,16 +96,14 @@ func (s *Service) CheckTokens(ctx context.Context) error {
 		leakcheckToken := leakcheckToken
 		leakedToken := hashMap[leakcheckToken.Hash]
 
-		if err := s.store.RevokeServiceAccountToken(
-			ctx, leakedToken.OrgId, *leakedToken.ServiceAccountId, leakedToken.Id); err != nil {
-			s.logger.Error("failed to delete leaked token. Revoke manually.",
-				"error", err,
-				"url", leakcheckToken.URL,
-				"reported_at", leakcheckToken.ReportedAt,
-				"token_id", leakedToken.Id,
-				"token", leakedToken.Name,
-				"org", leakedToken.OrgId,
-				"serviceAccount", *leakedToken.ServiceAccountId)
+		if s.revoke {
+			if err := s.store.RevokeServiceAccountToken(
+				ctx, leakedToken.OrgId, *leakedToken.ServiceAccountId, leakedToken.Id); err != nil {
+				s.logger.Error("failed to delete leaked token. Revoke manually.",
+					"error", err, "url", leakcheckToken.URL, "reported_at", leakcheckToken.ReportedAt,
+					"token_id", leakedToken.Id, "token", leakedToken.Name, "org", leakedToken.OrgId,
+					"serviceAccount", *leakedToken.ServiceAccountId)
+			}
 		}
 
 		if s.oncallURL != "" {
@@ -123,13 +113,27 @@ func (s *Service) CheckTokens(ctx context.Context) error {
 		}
 
 		s.logger.Info("revoked leaked token",
-			"url", leakcheckToken.URL,
-			"reported_at", leakcheckToken.ReportedAt,
-			"token_id", leakedToken.Id,
-			"token", leakedToken.Name,
-			"org", leakedToken.OrgId,
+			"url", leakcheckToken.URL, "reported_at", leakcheckToken.ReportedAt,
+			"token_id", leakedToken.Id, "token", leakedToken.Name, "org", leakedToken.OrgId,
 			"serviceAccount", *leakedToken.ServiceAccountId)
 	}
 
 	return nil
+}
+
+// filterCheckableTokens returns a list of tokens that can be checked and a map of tokens to their hashes.
+func (*Service) filterCheckableTokens(tokens []apikey.APIKey) ([]string, map[string]apikey.APIKey) {
+	hashes := make([]string, 0, len(tokens))
+	hashMap := make(map[string]apikey.APIKey)
+
+	for _, token := range tokens {
+		if hasExpired(token.Expires) || (token.IsRevoked != nil && *token.IsRevoked) {
+			continue
+		}
+
+		hashes = append(hashes, token.Key)
+		hashMap[token.Key] = token
+	}
+
+	return hashes, hashMap
 }
