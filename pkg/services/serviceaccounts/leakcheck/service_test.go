@@ -110,6 +110,23 @@ func TestService_CheckTokens(t *testing.T) {
 			notify:       false,
 			revoke:       true,
 		},
+		{
+			desc: "one token expired should not be checked",
+			retrievedTokens: []apikey.APIKey{{
+				Id:               1,
+				OrgId:            2,
+				Name:             "test",
+				Key:              "test-hash-1",
+				Role:             "Viewer",
+				Expires:          new(int64),
+				ServiceAccountId: new(int64),
+				IsRevoked:        &falseBool,
+			}},
+			wantHashes:   []string{},
+			leakedTokens: []Token{},
+			notify:       false,
+			revoke:       true,
+		},
 	}
 
 	for _, tt := range testCases {
