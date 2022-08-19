@@ -123,10 +123,10 @@ func (s *Service) CheckTokens(ctx context.Context) error {
 			}
 		}
 
-		s.logger.Info("revoked leaked token",
+		s.logger.Warn("found leaked token",
 			"url", leakcheckToken.URL, "reported_at", leakcheckToken.ReportedAt,
 			"token_id", leakedToken.Id, "token", leakedToken.Name, "org", leakedToken.OrgId,
-			"serviceAccount", *leakedToken.ServiceAccountId)
+			"serviceAccount", *leakedToken.ServiceAccountId, "revoked", s.revoke)
 	}
 
 	return nil
