@@ -27,7 +27,7 @@ When a token is found to be leaked, the service will automatically revoke the to
 ### Outgoing webhook
 
 By default, when a token leak is found, the service will automatically revoke the token and log the event.
-Aditionally, the service can be configured to send an outgoing webhook notification to a webhook URL.
+Additionally, the service can be configured to send an outgoing webhook notification to a webhook URL.
 
 This notification will contain a JSON payload with the following data:
 
