@@ -1,4 +1,4 @@
-package toucan
+package leakcheck
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	"github.com/grafana/grafana/pkg/setting"
 )
 
-const defaultURL = "https://toucan.grafana.com"
+const defaultURL = "https://leakcheck.grafana.com"
 
 type Checker interface {
 	CheckTokens(ctx context.Context) error
@@ -22,7 +22,7 @@ type SATokenRetriever interface {
 	RevokeServiceAccountToken(ctx context.Context, orgID, serviceAccountID, tokenID int64) error
 }
 
-// Toucan Service is grafana's service for checking leaked keys.
+// Leak Check Service is grafana's service for checking leaked keys.
 type Service struct {
 	store     SATokenRetriever
 	client    *client
@@ -31,13 +31,13 @@ type Service struct {
 }
 
 func NewService(store SATokenRetriever, cfg *setting.Cfg) *Service {
-	toucanBaseURL := cfg.SectionWithEnvOverrides("toucan").Key("base_url").MustString(defaultURL)
-	oncallURL := cfg.SectionWithEnvOverrides("toucan").Key("oncall_url").MustString("")
+	leakcheckBaseURL := cfg.SectionWithEnvOverrides("leakcheck").Key("base_url").MustString(defaultURL)
+	oncallURL := cfg.SectionWithEnvOverrides("leakcheck").Key("oncall_url").MustString("")
 
 	return &Service{
 		store:     store,
-		client:    newClient(toucanBaseURL, cfg.BuildVersion),
-		logger:    log.New("toucan"),
+		client:    newClient(leakcheckBaseURL, cfg.BuildVersion),
+		logger:    log.New("leakcheck"),
 		oncallURL: oncallURL,
 	}
 }
@@ -93,23 +93,23 @@ func (s *Service) CheckTokens(ctx context.Context) error {
 	}
 
 	// Check if any leaked tokens exist.
-	toucanTokens, err := s.client.checkTokens(ctx, hashes)
+	leakcheckTokens, err := s.client.checkTokens(ctx, hashes)
 	if err != nil {
 		return fmt.Errorf("failed to check tokens: %w", err)
 	}
 
 	// Revoke leaked tokens.
 	// Could be done in bulk but we don't expect more than 1 or 2 tokens to be leaked per check.
-	for _, toucanToken := range toucanTokens {
-		toucanToken := toucanToken
-		leakedToken := hashMap[toucanToken.Hash]
+	for _, leakcheckToken := range leakcheckTokens {
+		leakcheckToken := leakcheckToken
+		leakedToken := hashMap[leakcheckToken.Hash]
 
 		if err := s.store.RevokeServiceAccountToken(
 			ctx, leakedToken.OrgId, *leakedToken.ServiceAccountId, leakedToken.Id); err != nil {
 			s.logger.Error("failed to delete leaked token. Revoke manually.",
 				"error", err,
-				"url", toucanToken.URL,
-				"reported_at", toucanToken.ReportedAt,
+				"url", leakcheckToken.URL,
+				"reported_at", leakcheckToken.ReportedAt,
 				"token_id", leakedToken.Id,
 				"token", leakedToken.Name,
 				"org", leakedToken.OrgId,
@@ -117,14 +117,14 @@ func (s *Service) CheckTokens(ctx context.Context) error {
 		}
 
 		if s.oncallURL != "" {
-			if err := s.client.webhookCall(ctx, &toucanToken, leakedToken.Name, s.oncallURL); err != nil {
+			if err := s.client.webhookCall(ctx, &leakcheckToken, leakedToken.Name, s.oncallURL); err != nil {
 				s.logger.Warn("failed to call token leak webhook", "error", err)
 			}
 		}
 
 		s.logger.Info("revoked leaked token",
-			"url", toucanToken.URL,
-			"reported_at", toucanToken.ReportedAt,
+			"url", leakcheckToken.URL,
+			"reported_at", leakcheckToken.ReportedAt,
 			"token_id", leakedToken.Id,
 			"token", leakedToken.Name,
 			"org", leakedToken.OrgId,

@@ -12,7 +12,7 @@ import (
 	"github.com/grafana/grafana/pkg/services/serviceaccounts"
 	"github.com/grafana/grafana/pkg/services/serviceaccounts/api"
 	"github.com/grafana/grafana/pkg/services/serviceaccounts/database"
-	"github.com/grafana/grafana/pkg/services/serviceaccounts/toucan"
+	"github.com/grafana/grafana/pkg/services/serviceaccounts/leakcheck"
 	"github.com/grafana/grafana/pkg/setting"
 )
 
@@ -22,10 +22,10 @@ const (
 )
 
 type ServiceAccountsService struct {
-	store         serviceaccounts.Store
-	log           log.Logger
-	backgroundLog log.Logger
-	toucanService toucan.Checker
+	store            serviceaccounts.Store
+	log              log.Logger
+	backgroundLog    log.Logger
+	leakcheckService leakcheck.Checker
 
 	checkTokenLeaks    bool
 	checkTokenInterval time.Duration
@@ -55,12 +55,12 @@ func ProvideServiceAccountsService(
 	serviceaccountsAPI := api.NewServiceAccountsAPI(cfg, s, ac, routeRegister, s.store, permissionService)
 	serviceaccountsAPI.RegisterAPIEndpoints()
 
-	s.checkTokenLeaks = cfg.SectionWithEnvOverrides("toucan").Key("enabled").MustBool(false)
+	s.checkTokenLeaks = cfg.SectionWithEnvOverrides("leakcheck").Key("enabled").MustBool(false)
 	if s.checkTokenLeaks {
-		s.checkTokenInterval = cfg.SectionWithEnvOverrides("toucan").
+		s.checkTokenInterval = cfg.SectionWithEnvOverrides("leakcheck").
 			Key("interval").MustDuration(defaultTokenCollectionInterval)
 
-		s.toucanService = toucan.NewService(s.store, cfg)
+		s.leakcheckService = leakcheck.NewService(s.store, cfg)
 	}
 
 	return s, nil
@@ -90,7 +90,7 @@ func (sa *ServiceAccountsService) Run(ctx context.Context) error {
 		tokenCheckTicker.Stop()
 	} else {
 		sa.backgroundLog.Debug("enabled token leak check and executing first check")
-		if err := sa.toucanService.CheckTokens(ctx); err != nil {
+		if err := sa.leakcheckService.CheckTokens(ctx); err != nil {
 			sa.backgroundLog.Warn("Failed to check for leaked tokens", "error", err.Error())
 		}
 
@@ -116,7 +116,7 @@ func (sa *ServiceAccountsService) Run(ctx context.Context) error {
 		case <-tokenCheckTicker.C:
 			sa.backgroundLog.Debug("checking for leaked tokens")
 
-			if err := sa.toucanService.CheckTokens(ctx); err != nil {
+			if err := sa.leakcheckService.CheckTokens(ctx); err != nil {
 				sa.backgroundLog.Warn("Failed to check for leaked tokens", "error", err.Error())
 			}
 		}

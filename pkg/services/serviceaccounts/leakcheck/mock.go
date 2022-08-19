@@ -1,4 +1,4 @@
-package toucan
+package leakcheck
 
 import (
 	"context"

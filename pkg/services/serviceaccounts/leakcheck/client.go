@@ -1,4 +1,4 @@
-package toucan
+package leakcheck
 
 import (
 	"bytes"
@@ -14,20 +14,20 @@ import (
 
 const timeout = 4 * time.Second
 
-// Toucan Client is grafana's client for checking leaked keys.
+// LeakCheck Client is grafana's client for checking leaked keys.
 // Don't use this client directly,
-// use the toucan Service which handles token collection and checking instead.
+// use the leakcheck Service which handles token collection and checking instead.
 type client struct {
 	httpClient *http.Client
 	version    string
 	baseURL    string
 }
 
-type toucanRequest struct {
+type leakcheckRequest struct {
 	KeyHashes []string `json:"hashes"`
 }
 
-type ToucanToken struct {
+type LeakCheckToken struct {
 	Type       string `json:"type"`
 	URL        string `json:"url"`
 	Hash       string `json:"hash"`
@@ -45,55 +45,55 @@ func newClient(url, version string) *client {
 
 // checkTokens checks if any leaked tokens exist.
 // Returns list of leaked tokens.
-func (c *client) checkTokens(ctx context.Context, keyHashes []string) ([]ToucanToken, error) {
+func (c *client) checkTokens(ctx context.Context, keyHashes []string) ([]LeakCheckToken, error) {
 	// create request body
-	values := toucanRequest{KeyHashes: keyHashes}
+	values := leakcheckRequest{KeyHashes: keyHashes}
 
 	jsonValue, err := json.Marshal(values)
 	if err != nil {
-		return nil, errors.Wrap(err, "toucan client failed to make http request")
+		return nil, errors.Wrap(err, "leakcheck client failed to make http request")
 	}
 
 	// Build URL
 	url := fmt.Sprintf("%s/tokens", c.baseURL)
-	// Create request for toucan server
+	// Create request for leakcheck server
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
 		url, bytes.NewReader(jsonValue))
 	if err != nil {
-		return nil, errors.Wrap(err, "toucan client failed to make http request")
+		return nil, errors.Wrap(err, "leakcheck client failed to make http request")
 	}
 
 	// Set headers
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("User-Agent", "grafana-toucan-client/"+c.version)
+	req.Header.Set("User-Agent", "grafana-leakcheck-client/"+c.version)
 
 	// make http POST request to check for leaked tokens.
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return nil, errors.Wrap(err, "toucan client failed to do http request")
+		return nil, errors.Wrap(err, "leakcheck client failed to do http request")
 	}
 
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("toucan client received invalid status: %s", resp.Status)
+		return nil, fmt.Errorf("leakcheck client received invalid status: %s", resp.Status)
 	}
 
 	// decode response body
-	var tokens []ToucanToken
+	var tokens []LeakCheckToken
 	if err := json.NewDecoder(resp.Body).Decode(&tokens); err != nil {
-		return nil, errors.Wrap(err, "toucan client failed to decode response body")
+		return nil, errors.Wrap(err, "leakcheck client failed to decode response body")
 	}
 
 	return tokens, nil
 }
 
-func (c *client) webhookCall(ctx context.Context, token *ToucanToken, tokenName string, webhookURL string) error {
+func (c *client) webhookCall(ctx context.Context, token *LeakCheckToken, tokenName string, webhookURL string) error {
 	// create request body
 	values := map[string]interface{}{
 		"alert_uid":                uuid.NewString(),
-		"title":                    "Toucan Alert: Grafana Token leaked",
+		"title":                    "LeakCheck Alert: Grafana Token leaked",
 		"image_url":                "https://images.pexels.com/photos/5119737/pexels-photo-5119737.jpeg?auto=compress&cs=tinysrgb&w=300", //nolint
 		"state":                    "alerting",
 		"link_to_upstream_details": token.URL,
@@ -105,32 +105,32 @@ func (c *client) webhookCall(ctx context.Context, token *ToucanToken, tokenName 
 
 	jsonValue, err := json.Marshal(values)
 	if err != nil {
-		return errors.Wrap(err, "toucan client failed to marshal webhook request")
+		return errors.Wrap(err, "leakcheck client failed to marshal webhook request")
 	}
 
 	// Build URL
-	// Create request for toucan server
+	// Create request for leakcheck server
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
 		webhookURL, bytes.NewReader(jsonValue))
 	if err != nil {
-		return errors.Wrap(err, "toucan client failed to make http request")
+		return errors.Wrap(err, "leakcheck client failed to make http request")
 	}
 
 	// Set headers
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("User-Agent", "grafana-toucan-client/"+c.version)
+	req.Header.Set("User-Agent", "grafana-leakcheck-client/"+c.version)
 
 	// make http POST request to check for leaked tokens.
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return errors.Wrap(err, "toucan client failed to webhook request")
+		return errors.Wrap(err, "leakcheck client failed to webhook request")
 	}
 
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("toucan client failed to signal webhook: %s", resp.Status)
+		return fmt.Errorf("leakcheck client failed to signal webhook: %s", resp.Status)
 	}
 
 	return nil
