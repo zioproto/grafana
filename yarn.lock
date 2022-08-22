@@ -8672,6 +8672,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@scena/dragscroll@npm:^1.2.0":
+  version: 1.2.1
+  resolution: "@scena/dragscroll@npm:1.2.1"
+  dependencies:
+    "@daybrush/utils": 1.6.0
+    "@scena/event-emitter": ^1.0.2
+  checksum: 217b0612b0b5d2e721cd41b7534cc1b831aca236a4256b30bdeb965b3b0b7cf9f3934801a7158cb38483242e2568f8b734eeccfaee43b5df4e5df9ead7653dd5
+  languageName: node
+  linkType: hard
+
 "@scena/event-emitter@npm:^1.0.2, @scena/event-emitter@npm:^1.0.5":
   version: 1.0.5
   resolution: "@scena/event-emitter@npm:1.0.5"
@@ -21158,6 +21168,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"gesto@npm:^1.12.1":
+  version: 1.12.1
+  resolution: "gesto@npm:1.12.1"
+  dependencies:
+    "@daybrush/utils": ^1.7.1
+    "@scena/event-emitter": ^1.0.2
+  checksum: e9b3f461e3ac05cc77187052660dbd0efa0aa7922bc650ced2d1d24ee77633046a92b8093eb584475bed1e3e82236999c86aef7007f949d55b4cce45c1d2bc5b
+  languageName: node
+  linkType: hard
+
 "gesto@npm:^1.9.0":
   version: 1.9.0
   resolution: "gesto@npm:1.9.0"
@@ -21892,7 +21912,7 @@ __metadata:
     react-hook-form: 7.5.3
     react-inlinesvg: 3.0.0
     react-loadable: 5.5.0
-    react-moveable: 0.33.0
+    react-moveable: 0.38.2
     react-popper: 2.3.0
     react-popper-tooltip: 4.4.2
     react-redux: 7.2.6
@@ -32031,7 +32051,26 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-moveable@npm:0.33.0, react-moveable@npm:~0.33.0":
+"react-moveable@npm:0.38.2":
+  version: 0.38.2
+  resolution: "react-moveable@npm:0.38.2"
+  dependencies:
+    "@daybrush/utils": ^1.7.1
+    "@egjs/agent": ^2.2.1
+    "@egjs/children-differ": ^1.0.1
+    "@scena/dragscroll": ^1.2.0
+    "@scena/event-emitter": ^1.0.5
+    "@scena/matrix": ^1.1.1
+    css-to-mat: ^1.0.3
+    framework-utils: ^1.1.0
+    gesto: ^1.12.1
+    overlap-area: ^1.1.0
+    react-css-styled: ^1.0.3
+  checksum: 93137894146c474879c169edd0397f82dd98912067bc32233346ea69a6e46e7a6dddafdc3df52a5c334f1124021f479dc561d41a6544475bcc98345b6a56731a
+  languageName: node
+  linkType: hard
+
+"react-moveable@npm:~0.33.0":
   version: 0.33.0
   resolution: "react-moveable@npm:0.33.0"
   dependencies:
